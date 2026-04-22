@@ -1,14 +1,46 @@
+# services:
+#   db:
+#     image: postgres:15-alpine
+#     restart: always
+#     environment:
+#       - POSTGRES_USER=admin
+#       - POSTGRES_PASSWORD=admin
+#       - POSTGRES_DB=microblog_db
+#     ports:
+#       - '5432:5432'
+#     volumes:
+#       - ./db_data:/var/lib/postgresql/data  
+
+# docker-compose up -d
 services:
   db:
     image: postgres:15-alpine
     restart: always
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
-      - POSTGRES_DB=microblog_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: microblog_db
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
-      - ./db_data:/var/lib/postgresql/data  
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d microblog_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-# docker-compose up -d
+  app:
+    build: .
+    ports:
+      - "80:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://admin:admin@db:5432/microblog_db
+      PYTHONPATH: /my_app
+
+# И ОБЯЗАТЕЛЬНО ОБЪЯВИ ТОМ В КОНЦЕ ФАЙЛА:
+volumes:
+  postgres_data:

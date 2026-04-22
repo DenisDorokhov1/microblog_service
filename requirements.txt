@@ -1,4 +1,17 @@
-sqlalchemy
-asyncio
-marshmellow
-alembic
+# Web Framework
+fastapi==0.110.0
+uvicorn==0.27.1
+python-multipart==0.0.26
+
+# Database & Migrations
+sqlalchemy==2.0.28
+alembic==1.18.4
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# Validation & Schemas
+pydantic==2.6.3
+marshmallow==3.21.1
+
+# Utilities
+python-dotenv==1.0.1
