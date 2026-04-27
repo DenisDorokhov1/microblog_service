@@ -1,4 +1,8 @@
+import os
 from logging.config import fileConfig
+
+import asyncio
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -17,7 +21,8 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
-from app.database.base import Base
+from app.database.init_database import Base
+from app.database import models
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
@@ -26,6 +31,13 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+section = config.get_section(config.config_ini_section, {})
+db_url = os.getenv(
+    "DATABASE_URL", "postgresql+asyncpg://admin:admin@localhost:5432/microblog_db"
+)
+# Принудительно устанавливаем URL в конфиг Alembic
+config.set_main_option("sqlalchemy.url", db_url)
 
 
 def run_migrations_offline() -> None:
@@ -59,17 +71,31 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+    configuration = config.get_section(config.config_ini_section)
+
+    connectable = async_engine_from_config(
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        url=db_url,  # Явно передаем URL
     )
 
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+    async def do_run_migrations():
+        async with connectable.connect() as connection:
+            # alembic работает синхронно, поэтому используем run_sync
+            await connection.run_sync(do_run_migrations_sync)
+        await connectable.dispose()
 
+    def do_run_migrations_sync(connection):
+        context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
+
+    try:
+        asyncio.run(do_run_migrations())
+    except Exception as e:
+        print(f"Error during migration: {e}")
+        raise e
 
 
 if context.is_offline_mode():

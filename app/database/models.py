@@ -1,6 +1,16 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    UniqueConstraint,
+    LargeBinary,
+)
 from sqlalchemy.orm import relationship
-from .base import Base
+
+# from database.init_database import Base
+
+from app.database.init_database import Base
 
 
 class User(Base):
@@ -17,6 +27,22 @@ class User(Base):
         "Like", back_populates="user", cascade="all, delete-orphan"
     )
 
+    followers = relationship(
+        "User",
+        secondary="followers",
+        primaryjoin="User.id == Followers.followed_id",
+        secondaryjoin="User.id == Followers.follower_id",
+        back_populates="following",
+    )
+
+    following = relationship(
+        "User",
+        secondary="followers",
+        primaryjoin="User.id == Followers.follower_id",
+        secondaryjoin="User.id == Followers.followed_id",
+        back_populates="followers",
+    )
+
 
 class Tweet(Base):
     __tablename__ = "tweets"
@@ -31,7 +57,7 @@ class Tweet(Base):
     )
 
     attachments = relationship(
-        "Content", back_populates="tweet", cascade="all, delete-orphan"
+        "Tweet_and_Content", back_populates="tweet", cascade="all, delete-orphan"
     )
 
 
@@ -63,11 +89,24 @@ class Followers(Base):
 
 
 class Content(Base):
-    __tablename__ = "content"
+    __tablename__ = "contents"
     id = Column(Integer, primary_key=True, index=True)
+    file_body = Column(LargeBinary, nullable=False)
     content_name = Column(String)
-    tweet_id = Column(
-        Integer, ForeignKey("tweets.id", ondelete="CASCADE"), nullable=True
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    tweet_and_content = relationship(
+        "Tweet_and_Content", back_populates="content", cascade="all, delete-orphan"
     )
 
+
+class Tweet_and_Content(Base):
+    __tablename__ = "tweet_and_content"
+    id = Column(Integer, primary_key=True, index=True)
+
+    content_id = Column(Integer, ForeignKey("contents.id", ondelete="CASCADE"))
+    tweet_id = Column(Integer, ForeignKey("tweets.id", ondelete="CASCADE"))
+
+    content = relationship("Content", back_populates="tweet_and_content")
     tweet = relationship("Tweet", back_populates="attachments")
