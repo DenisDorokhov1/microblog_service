@@ -12,7 +12,7 @@ class UserShort(BaseModel):
 
 
 class UserProfileOut(UserShort):
-    """Полная инфа для профиля /api/users/me"""
+    """Полная инфа для профиля"""
 
     followers: List[UserShort] = []
     following: List[UserShort] = []

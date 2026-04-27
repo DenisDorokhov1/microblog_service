@@ -1,2 +1,4 @@
 docker-compose up --build
 docker-compose down
+логи:
+docker-compose logs -f app
