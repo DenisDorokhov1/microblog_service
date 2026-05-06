@@ -1,2 +1,4 @@
-- Добавить валидаторы в схемы
-- ПОМЕНЯЙ В alembic.ini ПУТЬ ДО БД, КОГДА ТЕСТИШЬ ЛОКАЛЬНО
+- написать README файл
+- написать unittests
+- проверить лайнеры: https://github.com/wemake-services/wemake-python-styleguide
+

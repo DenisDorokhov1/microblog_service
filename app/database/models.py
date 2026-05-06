@@ -93,6 +93,7 @@ class Content(Base):
     id = Column(Integer, primary_key=True, index=True)
     file_body = Column(LargeBinary, nullable=False)
     content_name = Column(String)
+    content_hash = Column(String, index=True)
     user_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
