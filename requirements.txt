@@ -16,6 +16,5 @@ marshmallow==3.21.1
 # Utilities
 python-dotenv==1.0.1
 
-pytest
-pytest-asyncio
-httpx
+# Linters
+wemake-python-styleguide==1.6.2

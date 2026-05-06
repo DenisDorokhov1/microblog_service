@@ -16,15 +16,6 @@ services:
       timeout: 5s
       retries: 5
 
-  db_test:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: microblog_test_db
-    ports:
-      - "5433:5432"
-
   app:
     build: .
     ports:

@@ -1,4 +1,2 @@
 - написать README файл
-- написать unittests
-- проверить лайнеры: https://github.com/wemake-services/wemake-python-styleguide
-
+- еще раз посмотреть на фронтенд: загрузка одной и той же фотки 2 раза
