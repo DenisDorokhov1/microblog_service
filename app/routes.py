@@ -2,10 +2,8 @@ import hashlib
 from fastapi import (
     FastAPI,
     Depends,
-    HTTPException,
     Response,
     Request,
-    Response,
     UploadFile,
     File,
 )
@@ -16,18 +14,39 @@ from sqlalchemy import delete
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # ниже раскоментировать, если проверка локально
 # from api.dependencies import get_current_user
 # from api.schemas import *
 from app.api.dependencies import get_current_user
-from app.api.schemas import *
-from app.database.models import *
-from app.database.init_database import engine, session, Base
+from app.api.schemas import (
+    UserShort,
+    TweetOut,
+    TweetIn,
+    SuccessResponse,
+    SuccessTweet,
+    SuccessMedia,
+    ProfileResponse,
+    TweetsListResponse,
+    ErrorResponse,
+)
+from app.database.models import (
+    User,
+    Tweet,
+    Like,
+    Followers,
+    Content,
+    Tweet_and_Content,
+)
+from app.database.init_database import engine, Base, get_session
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(
+    app: FastAPI,
+    session: AsyncSession = Depends(get_session),
+):
     """Действия при запуске приложения"""
     async with engine.begin() as conn:
         # Создаем таблицы, если их нет
@@ -65,8 +84,10 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
 
 
 # не нашел во фронтенде, где это вообще
-@app.get("/api/users/me", response_model=ProfileResponse)
-async def get_me(user: User = Depends(get_current_user)) -> ProfileResponse:
+@app.get("/api/users/me", status_code=200)
+async def get_me(
+    user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
+) -> ProfileResponse:
     """Основаная инфа про самого юзера"""
     result = await session.execute(
         select(User)
@@ -78,10 +99,11 @@ async def get_me(user: User = Depends(get_current_user)) -> ProfileResponse:
     return ProfileResponse(user=full_user)
 
 
-@app.post("/api/tweets", response_model=SuccessTweet)
+@app.post("/api/tweets", status_code=201)
 async def create_tweet(
     tweet: TweetIn,
     user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SuccessTweet:
     """Написать пост"""
     tweet_data = tweet.model_dump()
@@ -113,15 +135,14 @@ async def create_tweet(
     await session.commit()
     await session.refresh(new_tweet)
 
-    result = SuccessTweet(tweet_id=new_tweet.id)
-
-    return result
+    return SuccessTweet(tweet_id=new_tweet.id)
 
 
 @app.delete("/api/tweets/{tweet_id}", status_code=200)
 async def delete_tweet(
     tweet_id: int,
     user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SuccessResponse:
     """Удалить твит"""
     # Прямой запрос на удаление
@@ -145,9 +166,11 @@ async def delete_tweet(
     return SuccessResponse()
 
 
-@app.post("/api/medias", status_code=201, response_model=SuccessMedia)
+@app.post("/api/medias", status_code=201)
 async def upload_media(
-    file: UploadFile = File(...), user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SuccessMedia:
     """Загрузить контент (файлы) для твитов"""
     # читаем бинарное содержимое файла
@@ -160,18 +183,6 @@ async def upload_media(
 
     # Считаем хеш файла
     file_hash = hashlib.sha256(file_data).hexdigest()
-
-    # фронтенд не принимает файл во 2 раз сразу же. Поэтому пропускаем этот шаг
-
-    # Ищем, не загружал ли именно ЭТОТ пользователь ЭТОТ файл ранее
-    query = select(Content).where(
-        Content.user_id == user.id, Content.content_hash == file_hash
-    )
-    result = await session.execute(query)
-    existing_content = result.scalars().first()
-
-    if existing_content:
-        return SuccessMedia(media_id=existing_content.id)
 
     # Создаем запись в базе
     new_media = Content(
@@ -190,10 +201,8 @@ async def upload_media(
 
 
 @app.get("/api/medias/{media_id}", tags=["medias"])
-async def get_media(
-    media_id: int,
-):
-    """Поулчаем медиа для дальнейшей загрузки в посте"""
+async def get_media(media_id: int, session: AsyncSession = Depends(get_session)):
+    """Получаем медиа для дальнейшей загрузки в посте"""
     # Ищем контент в таблице Content
     result = await session.execute(select(Content).where(Content.id == media_id))
     media = result.scalars().first()
@@ -206,7 +215,9 @@ async def get_media(
 
 
 @app.get("/api/tweets", status_code=200)
-async def get_all_tweets(user: User = Depends(get_current_user)) -> TweetsListResponse:
+async def get_all_tweets(
+    user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
+) -> TweetsListResponse:
     """Посмотреть ленту из всех твитов"""
     query = (
         select(Tweet)
@@ -221,19 +232,23 @@ async def get_all_tweets(user: User = Depends(get_current_user)) -> TweetsListRe
     all_tweets = result.scalars().all()
 
     tweets_out = []
-    for t in all_tweets:
+    for i_tweet in all_tweets:
         # генерируем относительные ссылки
         links = [
-            f"/api/medias/{tac.content.id}" for tac in t.attachments if tac.content
+            f"/api/medias/{tac.content.id}"
+            for tac in i_tweet.attachments
+            if tac.content
         ]
 
-        likes_out = [UserShort.model_validate(like.user) for like in t.tweet_likes]
+        likes_out = [
+            UserShort.model_validate(like.user) for like in i_tweet.tweet_likes
+        ]
         # превращает "объекты Python/БД" в "Pydantic-модели для JSON".
         tweets_out.append(
             TweetOut(
-                id=t.id,
-                content=t.content,
-                author=UserShort.model_validate(t.author),
+                id=i_tweet.id,
+                text=i_tweet.content,
+                author=UserShort.model_validate(i_tweet.author),
                 likes=likes_out,
                 attachments=links,
             )
@@ -244,7 +259,9 @@ async def get_all_tweets(user: User = Depends(get_current_user)) -> TweetsListRe
 
 @app.post("/api/tweets/{tweet_id}/likes", status_code=201)
 async def post_like(
-    tweet_id: int, user: User = Depends(get_current_user)
+    tweet_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SuccessResponse:
     """Поставить лайк на пост"""
     # проверяем существование твита
@@ -273,22 +290,11 @@ async def post_like(
 
 @app.delete("/api/tweets/{tweet_id}/likes", status_code=200)
 async def delete_like(
-    tweet_id: int, user: User = Depends(get_current_user)
+    tweet_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SuccessResponse:
     """Удалить лайк с поста"""
-    # # ищем такой пост в БД
-    # result = await session.execute(
-    #     select(Like).where(Like.tweet_id == tweet_id, Like.user_id == user.id)
-    # )
-    # like_to_delete = result.scalars().first()
-
-    # if not like_to_delete:
-    #     raise HTTPException(status_code=404, detail=f"Tweet {tweet_id} id not found")
-
-    # session.delete(like_to_delete)
-    # await session.commit()
-
-    # return SuccessResponse()
     query = (
         delete(Like)
         .where(Like.tweet_id == tweet_id, Like.user_id == user.id)
@@ -311,7 +317,9 @@ async def delete_like(
 
 @app.post("/api/users/{user_id}/follow", status_code=201)
 async def follow_user(
-    user_id: int, user: User = Depends(get_current_user)
+    user_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SuccessResponse:
     """Подписать на юзера"""
     # ищем такого юзера
@@ -337,6 +345,7 @@ async def follow_user(
 async def stop_following(
     user_id: int,
     user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SuccessResponse:
     "Отписаться от пользователя"
     query = (
@@ -358,7 +367,9 @@ async def stop_following(
 
 @app.get("/api/users/{user_id}", status_code=200)
 async def get_user(
-    user_id: int, user: User = Depends(get_current_user)
+    user_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> ProfileResponse:
     """Поулчаем инфу про определенного пользователя"""
     # ищем в БД юзера
@@ -368,9 +379,10 @@ async def get_user(
         .where(User.id == user_id)
     )
 
-    if not result:
-        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
     full_user = result.scalars().first()
+
+    if full_user is None:
+        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
 
     return ProfileResponse(user=full_user)
 

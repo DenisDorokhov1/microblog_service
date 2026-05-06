@@ -24,7 +24,7 @@ class TweetOut(BaseModel):
     """Схема для отображения твита"""
 
     id: int
-    content: str
+    text: str
     author: UserShort
     likes: List[UserShort] = []
     attachments: List[str] = []
@@ -60,10 +60,6 @@ class ProfileResponse(SuccessResponse):
 
 class TweetsListResponse(SuccessResponse):
     tweets: List[TweetOut]
-
-
-class TweetCreateResponse(SuccessResponse):
-    tweet_id: int
 
 
 class ErrorResponse(BaseModel):
