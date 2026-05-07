@@ -112,7 +112,3 @@ async def created_tweet_id(client, test_user):
         "/api/tweets", json=user_data, headers={"api-key": test_user.api_key}
     )
     return response.json()["tweet_id"]
-
-
-# для тестов запустить контейнер для БД
-# docker-compose -f docker-compose.test.yaml up -d

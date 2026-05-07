@@ -18,7 +18,6 @@ async def get_current_user(
     user = result.scalars().first()
 
     if not user:
-        # Если юзер не найден, кидаем 401 по канонам API
         error_content = ErrorResponse(
             error_type="401 Unauthorized", error_message="Invalid API Key"
         ).model_dump()

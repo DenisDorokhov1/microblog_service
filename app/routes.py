@@ -16,7 +16,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# ниже раскоментировать, если проверка локально
+# ниже раскоментировать, если проверка не через Докер
 # from api.dependencies import get_current_user
 # from api.schemas import *
 from app.api.dependencies import get_current_user
@@ -333,7 +333,7 @@ async def follow_user(
         session.add(new_followed_user)
         await session.commit()
     except IntegrityError:
-        # если пользователь пытается 2 раз пописать на пользователя, откатываем транзакцию
+        # если пользователь пытается 2 раз подписаться на пользователя, откатываем транзакцию
         await session.rollback()
         return SuccessResponse()
 
@@ -386,6 +386,6 @@ async def get_user(
     return ProfileResponse(user=full_user)
 
 
-# из корня проекта
+# Запуск локально из корня проекта
 # python3 -m uvicorn app.routes:app --reload
 # uvicorn routes:app --reload
