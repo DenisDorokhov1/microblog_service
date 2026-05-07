@@ -24,7 +24,7 @@ class TweetOut(BaseModel):
     """Схема для отображения твита"""
 
     id: int
-    text: str
+    content: str
     author: UserShort
     likes: List[UserShort] = []
     attachments: List[str] = []

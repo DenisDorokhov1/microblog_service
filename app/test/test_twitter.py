@@ -609,7 +609,7 @@ async def test_get_all_tweets_complex(client, test_user, denis_user, db_session)
     assert len(data["tweets"]) > 0
 
     target_tweet = data["tweets"][0]
-    assert target_tweet["text"] == "Full stack tweet"
+    assert target_tweet["content"] == "Full stack tweet"
     assert target_tweet["author"]["name"] == test_user.name
     assert len(target_tweet["likes"]) == 1
     assert target_tweet["likes"][0]["name"] == "Denis"
@@ -649,14 +649,14 @@ async def test_get_all_tweets_without_photos(client, test_user, denis_user, db_s
     assert len(data["tweets"]) == 2
 
     target_tweet_1 = data["tweets"][1]
-    assert target_tweet_1["text"] == fake_text_1
+    assert target_tweet_1["content"] == fake_text_1
     assert target_tweet_1["author"]["name"] == test_user.name
     assert len(target_tweet_1["likes"]) == 1
     assert target_tweet_1["likes"][0]["name"] == "Denis"
     assert target_tweet_1["attachments"] == []
 
     target_tweet_2 = data["tweets"][0]
-    assert target_tweet_2["text"] == fake_text_2
+    assert target_tweet_2["content"] == fake_text_2
     assert target_tweet_2["author"]["name"] == denis_user.name
     assert len(target_tweet_2["likes"]) == 0
     assert target_tweet_2["attachments"] == []
