@@ -83,7 +83,6 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
     )
 
 
-# не нашел во фронтенде, где это вообще
 @app.get("/api/users/me", status_code=200)
 async def get_me(
     user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
@@ -247,7 +246,7 @@ async def get_all_tweets(
         tweets_out.append(
             TweetOut(
                 id=i_tweet.id,
-                text=i_tweet.content,
+                content=i_tweet.content,
                 author=UserShort.model_validate(i_tweet.author),
                 likes=likes_out,
                 attachments=links,
