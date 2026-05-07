@@ -1,7 +1,7 @@
 # Сервис микроблогов
 Корпоративный сервис микроблогов 
 
-![Logotype](/home/denis/new/python_advanced_diploma/twitter-logo.jpg)
+![Logotype](twitter-logo.jpg)
 
 ## Установка (Linux)
 
