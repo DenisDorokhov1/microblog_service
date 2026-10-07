@@ -3,6 +3,8 @@
 *.pyc
 db_data/
 .venv/
+.vscode
+venv
 
 docker_commands.txt
 to-do-list.txt
